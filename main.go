@@ -11,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/ryanuber/columnize"
 )
 
 const BaseDir = "/sys/fs/cgroup/lxc"
@@ -124,12 +126,11 @@ func main() {
 
 	cachedStats := make(map[string]IOSingle)
 	for t := range time.NewTicker(1 * time.Second).C {
-		fmt.Println(t.Format("2006-01-02 15:04:05"))
-		// list dirs in /sys/fs/cgroup/lxc
 		containersDir, err := os.ReadDir(BaseDir)
 		if err != nil {
 			log.Fatal(err)
 		}
+		lines := []string{"ID | Rios | Wios | Rbytes | Wbytes"}
 		newStats := make(map[string]IOSingle)
 		for _, containerDir := range containersDir {
 			if !containerDir.IsDir() {
@@ -147,11 +148,14 @@ func main() {
 			if ok {
 				diff := stat.Diff(oldStat)
 				if !diff.Zero() {
-					fmt.Printf("%s: rios=%d, wios=%d, rbytes=%s, wbytes=%s\n", id,
+					line := fmt.Sprintf("%s | %d | %d | %s | %s", id,
 						diff.Rios, diff.Wios, FormatSize(diff.Rbytes), FormatSize(diff.Wbytes))
+					lines = append(lines, line)
 				}
 			}
 		}
+		fmt.Println(t.Format("2006-01-02 15:04:05"))
+		fmt.Println(columnize.SimpleFormat(lines))
 		fmt.Println()
 		cachedStats = newStats
 	}
