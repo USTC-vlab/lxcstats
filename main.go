@@ -20,6 +20,30 @@ type IOSingle struct {
 	Rios, Wios, Dios       uint64
 }
 
+func SafeSub(a, b uint64) uint64 {
+	if a > b {
+		return a - b
+	}
+	return 0
+}
+
+var zeroIOSingle = IOSingle{}
+
+func (s IOSingle) Zero() bool {
+	return s == zeroIOSingle
+}
+
+func (l IOSingle) Diff(r IOSingle) IOSingle {
+	return IOSingle{
+		Rbytes: SafeSub(l.Rbytes, r.Rbytes),
+		Wbytes: SafeSub(l.Wbytes, r.Wbytes),
+		Dbytes: SafeSub(l.Dbytes, r.Dbytes),
+		Rios:   SafeSub(l.Rios, r.Rios),
+		Wios:   SafeSub(l.Wios, r.Wios),
+		Dios:   SafeSub(l.Dios, r.Dios),
+	}
+}
+
 type IOStat map[string]IOSingle
 
 func GetIOStat(id string) (IOStat, error) {
@@ -104,16 +128,15 @@ func main() {
 				continue
 			}
 			stat := stats[matchString]
+			newStats[id] = stat
 			oldStat, ok := cachedStats[id]
 			if ok {
-				if stat.Rios < oldStat.Rios || stat.Wios < oldStat.Wios {
-					log.Printf("warning: %s: ios decreased\n", id)
-				} else {
+				diff := stat.Diff(oldStat)
+				if !diff.Zero() {
 					fmt.Printf("%s: %d read iops, %d write iops\n", id,
-						stat.Rios-oldStat.Rios, stat.Wios-oldStat.Wios)
+						diff.Rios, diff.Wios)
 				}
 			}
-			newStats[id] = stat
 		}
 		fmt.Println()
 		cachedStats = newStats
