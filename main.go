@@ -27,6 +27,20 @@ func SafeSub(a, b uint64) uint64 {
 	return 0
 }
 
+func FormatSize(b uint64) string {
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := uint64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB",
+		float64(b)/float64(div), "kMGTPE"[exp])
+}
+
 var zeroIOSingle = IOSingle{}
 
 func (s IOSingle) Zero() bool {
@@ -133,8 +147,8 @@ func main() {
 			if ok {
 				diff := stat.Diff(oldStat)
 				if !diff.Zero() {
-					fmt.Printf("%s: %d read iops, %d write iops\n", id,
-						diff.Rios, diff.Wios)
+					fmt.Printf("%s: rios=%d, wios=%d, rbytes=%s, wbytes=%s\n", id,
+						diff.Rios, diff.Wios, FormatSize(diff.Rbytes), FormatSize(diff.Wbytes))
 				}
 			}
 		}
