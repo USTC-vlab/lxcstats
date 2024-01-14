@@ -12,6 +12,12 @@ import (
 	"github.com/ryanuber/columnize"
 )
 
+const (
+	IO = iota
+	CPU
+	MEMORY
+)
+
 const pressureLineFormat = "avg10=%f avg60=%f avg300=%f total=%d"
 
 type PSILine struct {
@@ -26,10 +32,24 @@ type PSIStats struct {
 	Full *PSILine
 }
 
-func GetIOPressure(id string) (*PSIStats, error) {
-	f, err := os.Open(filepath.Join(BaseDir, id, "io.pressure"))
+func getFileName(typ int) string {
+	switch typ {
+	case IO:
+		return "io.pressure"
+	case CPU:
+		return "cpu.pressure"
+	case MEMORY:
+		return "memory.pressure"
+	default:
+		panic("unknown type")
+	}
+}
+
+func GetPressure(id string, typ int) (*PSIStats, error) {
+	filename := getFileName(typ)
+	f, err := os.Open(filepath.Join(BaseDir, id, filename))
 	if err != nil {
-		return nil, fmt.Errorf("open io.pressure for %s: %w", id, err)
+		return nil, fmt.Errorf("open %s for %s: %w", filename, id, err)
 	}
 	defer f.Close()
 	stats := &PSIStats{
@@ -62,7 +82,7 @@ type idAndPressure struct {
 	pressure *PSIStats
 }
 
-func ioPressureMain() {
+func pressureMain(typ int) {
 	containersDir, err := os.ReadDir(BaseDir)
 	if err != nil {
 		log.Fatal(err)
@@ -74,9 +94,9 @@ func ioPressureMain() {
 			continue
 		}
 		id := containerDir.Name()
-		pressure, err := GetIOPressure(id)
+		pressure, err := GetPressure(id, typ)
 		if err != nil {
-			log.Printf("GetIOPressure error for %s: %v", id, err)
+			log.Printf("GetPressure error for %s: %v", id, err)
 			continue
 		}
 		pressures = append(pressures, idAndPressure{id, pressure})
