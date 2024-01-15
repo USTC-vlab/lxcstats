@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	IO = iota
-	CPU
-	MEMORY
+	IO     = "io.pressure"
+	CPU    = "cpu.pressure"
+	MEMORY = "memory.pressure"
 )
 
 const pressureLineFormat = "avg10=%f avg60=%f avg300=%f total=%d"
@@ -32,21 +32,7 @@ type PSIStats struct {
 	Full *PSILine
 }
 
-func getFileName(typ int) string {
-	switch typ {
-	case IO:
-		return "io.pressure"
-	case CPU:
-		return "cpu.pressure"
-	case MEMORY:
-		return "memory.pressure"
-	default:
-		panic("unknown type")
-	}
-}
-
-func GetPressure(id string, typ int) (*PSIStats, error) {
-	filename := getFileName(typ)
+func GetPressure(id string, filename string) (*PSIStats, error) {
 	f, err := os.Open(filepath.Join(BaseDir, id, filename))
 	if err != nil {
 		return nil, fmt.Errorf("open %s for %s: %w", filename, id, err)
@@ -82,7 +68,7 @@ type idAndPressure struct {
 	pressure *PSIStats
 }
 
-func pressureMain(typ int) {
+func pressureMain(filename string) {
 	containersDir, err := os.ReadDir(BaseDir)
 	if err != nil {
 		log.Fatal(err)
@@ -94,7 +80,7 @@ func pressureMain(typ int) {
 			continue
 		}
 		id := containerDir.Name()
-		pressure, err := GetPressure(id, typ)
+		pressure, err := GetPressure(id, filename)
 		if err != nil {
 			log.Printf("GetPressure error for %s: %v", id, err)
 			continue
@@ -113,5 +99,6 @@ func pressureMain(typ int) {
 		line := fmt.Sprintf("%s | %.1f | %.1f | %.1f", p.id, p.pressure.Some.Avg10, p.pressure.Some.Avg60, p.pressure.Some.Avg300)
 		lines = append(lines, line)
 	}
+	fmt.Printf("Top stats from %s\n", filename)
 	fmt.Println(columnize.SimpleFormat(lines))
 }
