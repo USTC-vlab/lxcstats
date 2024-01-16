@@ -8,16 +8,16 @@ Show statistics about LXC containers in Proxmox VE.
 # ./lxcstats 
 Usage of ./lxcstats:
   ./lxcstats <disk>
-  ./lxcstats -ip
-  ./lxcstats -cp
-  ./lxcstats -mp
+  ./lxcstats [-cp] [-mp] [-ip] [-df]
 
   -cp
-    	list LXC with highest CPU pressures
+        list LXC with highest CPU pressures
+  -df
+        list LXC with highest root filesystem space usage
   -ip
-    	list LXC with highest I/O pressures
+        list LXC with highest I/O pressures
   -mp
-    	list LXC with highest memory pressures
+        list LXC with highest memory pressures
 # ./lxcstats -cp
 ID    Avg10  Avg60  Avg300
 1111  50.0   50.0   50.0
@@ -39,6 +39,11 @@ ID    Avg10  Avg60  Avg300
 1113  0.0    0.0    0.0
 1114  0.0    0.0    0.0
 1115  0.0    0.0    0.0
+# ./lxcstats -df
+Top stats of rootfs space
+ID    RootFS used / total
+1111  17.6 GB / 23.3 GB
+1112  4.0 GB / 15.6 GB
 # ./lxcstats /dev/sdd
 2024-01-14 18:57:49
 ID  Rios  Wios  Rbytes  Wbytes
