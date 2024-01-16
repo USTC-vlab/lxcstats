@@ -13,7 +13,7 @@ func init() {
 		w := flag.CommandLine.Output()
 		fmt.Fprintf(w, "Usage of %s:\n", os.Args[0])
 		fmt.Fprintf(w, "  %s <disk>\n", os.Args[0])
-		fmt.Fprintf(w, "  %s [-cp] [-mp] [-ip]\n", os.Args[0])
+		fmt.Fprintf(w, "  %s [-cp] [-mp] [-ip] [-df]\n", os.Args[0])
 		fmt.Fprintln(w)
 		flag.PrintDefaults()
 	}
@@ -22,14 +22,16 @@ func init() {
 func main() {
 	var cpuPressure,
 		memoryPressure,
-		ioPressure bool
+		ioPressure,
+		rootFSSpace bool
 	flag.BoolVar(&cpuPressure, "cp", false, "list LXC with highest CPU pressures")
 	flag.BoolVar(&memoryPressure, "mp", false, "list LXC with highest memory pressures")
 	flag.BoolVar(&ioPressure, "ip", false, "list LXC with highest I/O pressures")
+	flag.BoolVar(&rootFSSpace, "df", false, "list LXC with highest root filesystem space usage")
 	flag.Parse()
 
-	showPressure := cpuPressure || memoryPressure || ioPressure
-	if showPressure {
+	showStats := cpuPressure || memoryPressure || ioPressure || rootFSSpace
+	if showStats {
 		if cpuPressure {
 			pressureMain(CPU)
 		}
@@ -38,6 +40,9 @@ func main() {
 		}
 		if ioPressure {
 			pressureMain(IO)
+		}
+		if rootFSSpace {
+			fstatfsMain()
 		}
 	} else {
 		if flag.NArg() != 1 {
