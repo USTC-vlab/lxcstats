@@ -8,9 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func showHelp(cmd *cobra.Command, args []string) {
-	cmd.Help()
-}
+var Version string
 
 func MakeCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -18,12 +16,20 @@ func MakeCmd() *cobra.Command {
 		Short: "Vlab's Container Tool",
 		Long:  "Vlab's Container Tool, a versatile tool for managing containers on Proxmox VE",
 		Args:  cobra.NoArgs,
-		Run:   showHelp,
 	}
 	cmd.CompletionOptions.HiddenDefaultCmd = true
 	cmd.AddCommand(df.MakeCmd())
 	cmd.AddCommand(findpid.MakeCmd())
 	cmd.AddCommand(iostat.MakeCmd())
 	cmd.AddCommand(pressure.MakeCmd())
+	pVersion := cmd.Flags().BoolP("version", "v", false, "show version")
+
+	cmd.Run = func(cmd *cobra.Command, args []string) {
+		if *pVersion {
+			cmd.Println(cmd.Name(), Version)
+		} else {
+			cmd.Help()
+		}
+	}
 	return cmd
 }
