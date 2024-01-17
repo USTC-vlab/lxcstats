@@ -2,6 +2,7 @@ package df
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"sort"
 	"syscall"
@@ -12,27 +13,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func getInitPid(id string) (int, error) {
-	f, err := cgroup.OpenLXC(id, "ns/init.scope/cgroup.procs")
-	if err != nil {
-		return 0, err
-	}
-	defer f.Close()
-	var pid int
-	_, err = fmt.Fscanf(f, "%d", &pid)
-	if err != nil {
-		return 0, err
-	}
-	return pid, nil
-}
-
 type idAndUsedRootFSSpace struct {
 	id    string
 	used  uint64
 	total uint64
 }
 
-func fstatfsMain() error {
+func fstatfsMain(w io.Writer, topN int) error {
 	ids, err := cgroup.ListLXC()
 	if err != nil {
 		return err
@@ -40,15 +27,14 @@ func fstatfsMain() error {
 
 	dfRes := make([]idAndUsedRootFSSpace, 0, len(ids))
 	for _, id := range ids {
-		initPid, err := getInitPid(id)
+		initPid, err := cgroup.GetLXCInitPid(id)
 		if err != nil {
 			log.Printf("get init pid error for %s: %v", id, err)
 			continue
 		}
 		rootFSPath := fmt.Sprintf("/proc/%d/root", initPid)
 		var statfs syscall.Statfs_t
-		err = syscall.Statfs(rootFSPath, &statfs)
-		if err != nil {
+		if err = syscall.Statfs(rootFSPath, &statfs); err != nil {
 			log.Printf("statfs error for %s: %v", rootFSPath, err)
 			continue
 		}
@@ -61,26 +47,30 @@ func fstatfsMain() error {
 		return (dfRes[i].total - dfRes[i].used) < (dfRes[j].total - dfRes[j].used)
 	})
 
-	lines := []string{"ID | RootFS used | total"}
+	lines := []string{"ID | RootFS used | total | %"}
 	for i, p := range dfRes {
-		if i >= 5 {
+		if i >= topN {
 			break
 		}
-		line := fmt.Sprintf("%s | %s | %s", p.id, util.FormatSize(p.used), util.FormatSize(p.total))
+		line := fmt.Sprintf("%s | %s | %s | %.1f", p.id,
+			util.FormatSize(p.used),
+			util.FormatSize(p.total),
+			float64(p.used)/float64(p.total)*100)
 		lines = append(lines, line)
 	}
-	fmt.Printf("Top stats of rootfs space\n")
-	fmt.Println(columnize.SimpleFormat(lines))
+	fmt.Fprintln(w, columnize.SimpleFormat(lines))
 	return nil
 }
 
 func MakeCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "df",
 		Short: "List LXC with highest root filesystem space usage",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return fstatfsMain()
-		},
 	}
+	pN := cmd.Flags().IntP("count", "n", 5, "number of containers to show")
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return fstatfsMain(cmd.OutOrStdout(), *pN)
+	}
+	return cmd
 }

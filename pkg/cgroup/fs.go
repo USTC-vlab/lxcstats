@@ -1,6 +1,7 @@
 package cgroup
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -29,4 +30,18 @@ func ListLXC() ([]string, error) {
 		}
 	}
 	return ids, nil
+}
+
+func GetLXCInitPid(id string) (int, error) {
+	f, err := OpenLXC(id, "ns/init.scope/cgroup.procs")
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	var pid int
+	_, err = fmt.Fscanf(f, "%d", &pid)
+	if err != nil {
+		return 0, err
+	}
+	return pid, nil
 }

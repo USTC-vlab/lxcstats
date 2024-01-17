@@ -68,7 +68,7 @@ type idAndPressure struct {
 	pressure *PSIStats
 }
 
-func listPressures(filename string) error {
+func listPressures(filename string, topN int) error {
 	ids, err := cgroup.ListLXC()
 	if err != nil {
 		log.Fatal(err)
@@ -89,13 +89,13 @@ func listPressures(filename string) error {
 
 	lines := []string{"ID | Avg10 | Avg60 | Avg300"}
 	for i, p := range pressures {
-		if i >= 5 {
+		if i >= topN {
 			break
 		}
 		line := fmt.Sprintf("%s | %.1f | %.1f | %.1f", p.id, p.pressure.Some.Avg10, p.pressure.Some.Avg60, p.pressure.Some.Avg300)
 		lines = append(lines, line)
 	}
-	fmt.Printf("Top stats from %s\n", filename)
+	fmt.Printf("Top %d containers with %s\n", topN, filename)
 	fmt.Println(columnize.SimpleFormat(lines))
 	return nil
 }
@@ -112,17 +112,23 @@ func MakeCmd() *cobra.Command {
 	pCPU := flags.BoolP("cpu", "c", false, "list LXC with highest CPU pressures")
 	pMemory := flags.BoolP("memory", "m", false, "list LXC with highest memory pressures")
 	pIO := flags.BoolP("io", "i", false, "list LXC with highest I/O pressures")
+	pN := flags.IntP("count", "n", 5, "number of containers to show")
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		enabled := []bool{*pCPU, *pMemory, *pIO}
 		filename := []string{CPU, MEMORY, IO}
+		anyEnabled := false
 		for i, e := range enabled {
 			if !e {
 				continue
 			}
-			if err := listPressures(filename[i]); err != nil {
+			anyEnabled = true
+			if err := listPressures(filename[i], *pN); err != nil {
 				return err
 			}
+		}
+		if !anyEnabled {
+			return fmt.Errorf("no pressure type specified")
 		}
 		return nil
 	}

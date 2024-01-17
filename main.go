@@ -1,13 +1,13 @@
 package main
 
 import (
-	"log"
+	"os"
 
 	"github.com/USTC-vlab/vct/cmd"
 )
 
 func main() {
 	if err := cmd.MakeCmd().Execute(); err != nil {
-		log.Fatal(err)
+		os.Exit(1)
 	}
 }
