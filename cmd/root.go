@@ -14,7 +14,8 @@ func showHelp(cmd *cobra.Command, args []string) {
 func MakeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "vct",
-		Short: "",
+		Short: "Vlab's Container Tool",
+		Long:  "Vlab's Container Tool, a versatile tool for managing containers on Proxmox VE",
 		Args:  cobra.NoArgs,
 		Run:   showHelp,
 	}

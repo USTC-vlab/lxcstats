@@ -1,15 +1,13 @@
 package main
 
 import (
-	"fmt"
-	"os"
+	"log"
 
 	"github.com/USTC-vlab/vct/cmd"
 )
 
 func main() {
 	if err := cmd.MakeCmd().Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }
