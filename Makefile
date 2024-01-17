@@ -1,9 +1,11 @@
-SRC := $(wildcard *.go go.mod)
 BIN := lxcstats
 
-.PHONY: all
+.PHONY: all $(BIN) clean
 
 all: $(BIN)
 
-$(BIN): $(SRC)
+$(BIN):
 	go build -ldflags='-s -w'
+
+clean:
+	rm -f $(BIN)

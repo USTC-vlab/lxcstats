@@ -1,18 +1,19 @@
-package main
+package df
 
 import (
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"sort"
 	"syscall"
 
+	"github.com/USTC-vlab/lxcstats/pkg/cgroup"
+	"github.com/USTC-vlab/lxcstats/pkg/util"
 	"github.com/ryanuber/columnize"
+	"github.com/spf13/cobra"
 )
 
 func getInitPid(id string) (int, error) {
-	f, err := os.Open(filepath.Join(BaseDir, id, "ns/init.scope/cgroup.procs"))
+	f, err := cgroup.OpenLXC(id, "ns/init.scope/cgroup.procs")
 	if err != nil {
 		return 0, err
 	}
@@ -31,18 +32,14 @@ type idAndUsedRootFSSpace struct {
 	total uint64
 }
 
-func fstatfsMain() {
-	containersDir, err := os.ReadDir(BaseDir)
+func fstatfsMain() error {
+	ids, err := cgroup.ListLXC()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	dfRes := make([]idAndUsedRootFSSpace, 0, len(containersDir))
-	for _, containerDir := range containersDir {
-		if !containerDir.IsDir() {
-			continue
-		}
-		id := containerDir.Name()
+	dfRes := make([]idAndUsedRootFSSpace, 0, len(ids))
+	for _, id := range ids {
 		initPid, err := getInitPid(id)
 		if err != nil {
 			log.Printf("get init pid error for %s: %v", id, err)
@@ -64,14 +61,26 @@ func fstatfsMain() {
 		return (dfRes[i].total - dfRes[i].used) < (dfRes[j].total - dfRes[j].used)
 	})
 
-	lines := []string{"ID | RootFS used / total"}
+	lines := []string{"ID | RootFS used | total"}
 	for i, p := range dfRes {
 		if i >= 5 {
 			break
 		}
-		line := fmt.Sprintf("%s | %s / %s", p.id, FormatSize(p.used), FormatSize(p.total))
+		line := fmt.Sprintf("%s | %s | %s", p.id, util.FormatSize(p.used), util.FormatSize(p.total))
 		lines = append(lines, line)
 	}
 	fmt.Printf("Top stats of rootfs space\n")
 	fmt.Println(columnize.SimpleFormat(lines))
+	return nil
+}
+
+func MakeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "df",
+		Short: "List LXC with highest root filesystem space usage",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return fstatfsMain()
+		},
+	}
 }

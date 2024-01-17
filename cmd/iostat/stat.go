@@ -1,16 +1,17 @@
-package main
+package iostat
 
 import (
 	"bufio"
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/USTC-vlab/lxcstats/pkg/cgroup"
+	"github.com/USTC-vlab/lxcstats/pkg/util"
 	"github.com/ryanuber/columnize"
 )
 
@@ -27,19 +28,19 @@ func (s IOSingle) Zero() bool {
 
 func (l IOSingle) Diff(r IOSingle) IOSingle {
 	return IOSingle{
-		Rbytes: SafeSub(l.Rbytes, r.Rbytes),
-		Wbytes: SafeSub(l.Wbytes, r.Wbytes),
-		Dbytes: SafeSub(l.Dbytes, r.Dbytes),
-		Rios:   SafeSub(l.Rios, r.Rios),
-		Wios:   SafeSub(l.Wios, r.Wios),
-		Dios:   SafeSub(l.Dios, r.Dios),
+		Rbytes: util.SafeSub(l.Rbytes, r.Rbytes),
+		Wbytes: util.SafeSub(l.Wbytes, r.Wbytes),
+		Dbytes: util.SafeSub(l.Dbytes, r.Dbytes),
+		Rios:   util.SafeSub(l.Rios, r.Rios),
+		Wios:   util.SafeSub(l.Wios, r.Wios),
+		Dios:   util.SafeSub(l.Dios, r.Dios),
 	}
 }
 
 type IOStat map[string]IOSingle
 
 func GetIOStat(id string) (IOStat, error) {
-	f, err := os.Open(filepath.Join(BaseDir, id, "io.stat"))
+	f, err := cgroup.OpenLXC(id, "io.stat")
 	if err != nil {
 		return nil, fmt.Errorf("open io.stat for %s: %w", id, err)
 	}
@@ -80,7 +81,7 @@ func GetIOStat(id string) (IOStat, error) {
 	return stats, nil
 }
 
-func ioStatMain(diskPath string) {
+func iostatMain(diskPath string) {
 	devInfo, err := os.Stat(diskPath)
 	if err != nil {
 		log.Fatal(err)
@@ -96,17 +97,13 @@ func ioStatMain(diskPath string) {
 
 	cachedStats := make(map[string]IOSingle)
 	for t := range time.NewTicker(1 * time.Second).C {
-		containersDir, err := os.ReadDir(BaseDir)
+		ids, err := cgroup.ListLXC()
 		if err != nil {
 			log.Fatal(err)
 		}
 		lines := []string{"ID | Rios | Wios | Rbytes | Wbytes"}
 		newStats := make(map[string]IOSingle)
-		for _, containerDir := range containersDir {
-			if !containerDir.IsDir() {
-				continue
-			}
-			id := containerDir.Name()
+		for _, id := range ids {
 			stats, err := GetIOStat(id)
 			if err != nil {
 				log.Printf("GetIOStat error for %s: %v", id, err)
@@ -119,7 +116,7 @@ func ioStatMain(diskPath string) {
 				diff := stat.Diff(oldStat)
 				if !diff.Zero() {
 					line := fmt.Sprintf("%s | %d | %d | %s | %s", id,
-						diff.Rios, diff.Wios, FormatSize(diff.Rbytes), FormatSize(diff.Wbytes))
+						diff.Rios, diff.Wios, util.FormatSize(diff.Rbytes), util.FormatSize(diff.Wbytes))
 					lines = append(lines, line)
 				}
 			}

@@ -1,15 +1,15 @@
-package main
+package pressure
 
 import (
 	"bufio"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/USTC-vlab/lxcstats/pkg/cgroup"
 	"github.com/ryanuber/columnize"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -33,7 +33,7 @@ type PSIStats struct {
 }
 
 func GetPressure(id string, filename string) (*PSIStats, error) {
-	f, err := os.Open(filepath.Join(BaseDir, id, filename))
+	f, err := cgroup.OpenLXC(id, filename)
 	if err != nil {
 		return nil, fmt.Errorf("open %s for %s: %w", filename, id, err)
 	}
@@ -68,18 +68,14 @@ type idAndPressure struct {
 	pressure *PSIStats
 }
 
-func pressureMain(filename string) {
-	containersDir, err := os.ReadDir(BaseDir)
+func listPressures(filename string) error {
+	ids, err := cgroup.ListLXC()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pressures := make([]idAndPressure, 0, len(containersDir))
-	for _, containerDir := range containersDir {
-		if !containerDir.IsDir() {
-			continue
-		}
-		id := containerDir.Name()
+	pressures := make([]idAndPressure, 0, len(ids))
+	for _, id := range ids {
 		pressure, err := GetPressure(id, filename)
 		if err != nil {
 			log.Printf("GetPressure error for %s: %v", id, err)
@@ -101,4 +97,34 @@ func pressureMain(filename string) {
 	}
 	fmt.Printf("Top stats from %s\n", filename)
 	fmt.Println(columnize.SimpleFormat(lines))
+	return nil
+}
+
+func MakeCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "pressure [-c | --cpu] [-m | --memory] [-i | --io]",
+		Short:   "List LXC with highest pressures",
+		Aliases: []string{"p"},
+		Args:    cobra.NoArgs,
+	}
+	flags := cmd.Flags()
+	flags.SortFlags = false
+	pCPU := flags.BoolP("cpu", "c", false, "list LXC with highest CPU pressures")
+	pMemory := flags.BoolP("memory", "m", false, "list LXC with highest memory pressures")
+	pIO := flags.BoolP("io", "i", false, "list LXC with highest I/O pressures")
+
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		enabled := []bool{*pCPU, *pMemory, *pIO}
+		filename := []string{CPU, MEMORY, IO}
+		for i, e := range enabled {
+			if !e {
+				continue
+			}
+			if err := listPressures(filename[i]); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return cmd
 }
