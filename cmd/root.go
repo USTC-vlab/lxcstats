@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/USTC-vlab/vct/cmd/df"
+	"github.com/USTC-vlab/vct/cmd/findpid"
 	"github.com/USTC-vlab/vct/cmd/iostat"
 	"github.com/USTC-vlab/vct/cmd/pressure"
 	"github.com/spf13/cobra"
@@ -21,6 +22,7 @@ func MakeCmd() *cobra.Command {
 	}
 	cmd.CompletionOptions.HiddenDefaultCmd = true
 	cmd.AddCommand(df.MakeCmd())
+	cmd.AddCommand(findpid.MakeCmd())
 	cmd.AddCommand(iostat.MakeCmd())
 	cmd.AddCommand(pressure.MakeCmd())
 	return cmd
