@@ -23,7 +23,8 @@ func findLXCForPid(pid string) (string, error) {
 	line := s.Text()
 	remainder, ok := strings.CutPrefix(line, "0::/lxc/")
 	if !ok {
-		return "", fmt.Errorf("invalid cgroup file %s (read %q)", filename, line)
+		// does not belong to an LXC container
+		return "", nil
 	}
 	parts := strings.SplitN(remainder, "/", 2)
 	if len(parts) != 2 {
@@ -38,6 +39,9 @@ func runE(cmd *cobra.Command, args []string) error {
 		id, err := findLXCForPid(pid)
 		if err != nil {
 			return err
+		}
+		if id == "" {
+			id = "<none>"
 		}
 		fmt.Fprintf(w, "%s: %s\n", pid, id)
 	}
