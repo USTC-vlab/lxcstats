@@ -9,6 +9,14 @@ import (
 )
 
 var Version string
+var versionCmd = &cobra.Command{
+	Use:    "version",
+	Short:  "Show version",
+	Hidden: true,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Println(cmd.Root().Name(), Version)
+	},
+}
 
 func MakeCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -23,12 +31,13 @@ func MakeCmd() *cobra.Command {
 		findpid.MakeCmd(),
 		iostat.MakeCmd(),
 		pressure.MakeCmd(),
+		versionCmd,
 	)
 	pVersion := cmd.Flags().BoolP("version", "v", false, "show version")
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		if *pVersion {
-			cmd.Println(cmd.Name(), Version)
+			versionCmd.Run(cmd, args)
 		} else {
 			cmd.Help()
 		}
