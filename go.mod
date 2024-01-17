@@ -1,4 +1,4 @@
-module github.com/USTC-vlab/lxcstats
+module github.com/USTC-vlab/vct
 
 go 1.20
 

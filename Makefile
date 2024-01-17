@@ -1,4 +1,4 @@
-BIN := lxcstats
+BIN := vct
 
 .PHONY: all $(BIN) clean
 

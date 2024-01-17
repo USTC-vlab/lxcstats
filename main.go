@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/USTC-vlab/lxcstats/cmd"
+	"github.com/USTC-vlab/vct/cmd"
 )
 
 func main() {

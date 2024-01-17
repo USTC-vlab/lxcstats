@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/USTC-vlab/lxcstats/pkg/cgroup"
+	"github.com/USTC-vlab/vct/pkg/cgroup"
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
 )

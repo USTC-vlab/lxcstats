@@ -6,8 +6,8 @@ import (
 	"sort"
 	"syscall"
 
-	"github.com/USTC-vlab/lxcstats/pkg/cgroup"
-	"github.com/USTC-vlab/lxcstats/pkg/util"
+	"github.com/USTC-vlab/vct/pkg/cgroup"
+	"github.com/USTC-vlab/vct/pkg/util"
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
 )

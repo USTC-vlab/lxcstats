@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"github.com/USTC-vlab/lxcstats/cmd/df"
-	"github.com/USTC-vlab/lxcstats/cmd/iostat"
-	"github.com/USTC-vlab/lxcstats/cmd/pressure"
+	"github.com/USTC-vlab/vct/cmd/df"
+	"github.com/USTC-vlab/vct/cmd/iostat"
+	"github.com/USTC-vlab/vct/cmd/pressure"
 	"github.com/spf13/cobra"
 )
 
@@ -18,6 +18,7 @@ func MakeCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		Run:   showHelp,
 	}
+	cmd.CompletionOptions.HiddenDefaultCmd = true
 	cmd.AddCommand(df.MakeCmd())
 	cmd.AddCommand(iostat.MakeCmd())
 	cmd.AddCommand(pressure.MakeCmd())
