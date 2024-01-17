@@ -18,10 +18,12 @@ func MakeCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 	cmd.CompletionOptions.HiddenDefaultCmd = true
-	cmd.AddCommand(df.MakeCmd())
-	cmd.AddCommand(findpid.MakeCmd())
-	cmd.AddCommand(iostat.MakeCmd())
-	cmd.AddCommand(pressure.MakeCmd())
+	cmd.AddCommand(
+		df.MakeCmd(),
+		findpid.MakeCmd(),
+		iostat.MakeCmd(),
+		pressure.MakeCmd(),
+	)
 	pVersion := cmd.Flags().BoolP("version", "v", false, "show version")
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
