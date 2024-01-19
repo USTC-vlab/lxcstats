@@ -4,6 +4,7 @@ import (
 	"github.com/USTC-vlab/vct/cmd/df"
 	"github.com/USTC-vlab/vct/cmd/findpid"
 	"github.com/USTC-vlab/vct/cmd/iostat"
+	"github.com/USTC-vlab/vct/cmd/killall"
 	"github.com/USTC-vlab/vct/cmd/pressure"
 	"github.com/spf13/cobra"
 )
@@ -29,6 +30,7 @@ func MakeCmd() *cobra.Command {
 		df.MakeCmd(),
 		findpid.MakeCmd(),
 		iostat.MakeCmd(),
+		killall.MakeCmd(),
 		pressure.MakeCmd(),
 		versionCmd,
 	)
@@ -36,7 +38,7 @@ func MakeCmd() *cobra.Command {
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		if *pVersion {
-			versionCmd.Run(cmd, args)
+			versionCmd.Run(versionCmd, args)
 		} else {
 			cmd.Help()
 		}
