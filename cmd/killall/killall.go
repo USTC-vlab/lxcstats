@@ -1,6 +1,8 @@
 package killall
 
 import (
+	"fmt"
+	"io"
 	"strconv"
 	"sync"
 
@@ -9,32 +11,42 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func killWorker(ch <-chan string, errCh chan<- error, wg *sync.WaitGroup) {
+type idAndError struct {
+	id  string
+	err error
+}
+
+func killWorker(ch <-chan string, errCh chan<- idAndError, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for id := range ch {
 		cmd := pve.Stop(id)
 		if err := cmd.Run(); err != nil {
-			errCh <- err
+			errCh <- idAndError{id, err}
 		}
 	}
 }
 
-func killallMain(n int, minID int) error {
+func killallMain(out io.Writer, n int, minID int) (err error) {
 	ch := make(chan string)
-	chErr := make(chan error)
+	chErr := make(chan idAndError)
 	wg := &sync.WaitGroup{}
 	wg.Add(n)
 	for i := 0; i < n; i++ {
 		go killWorker(ch, chErr, wg)
 	}
+	hasError := false
+	go func() {
+		for e := range chErr {
+			hasError = true
+			fmt.Fprintf(out, "error killing %s: %v\n", e.id, e.err)
+		}
+	}()
 	defer func() {
 		close(ch)
 		wg.Wait()
 		close(chErr)
-	}()
-	// discard errors for now
-	go func() {
-		for range chErr {
+		if hasError {
+			err = fmt.Errorf("some containers failed to stop")
 		}
 	}()
 
@@ -52,7 +64,7 @@ func killallMain(n int, minID int) error {
 		}
 		ch <- id
 	}
-	return nil
+	return
 }
 
 func MakeCmd() *cobra.Command {
@@ -66,7 +78,7 @@ func MakeCmd() *cobra.Command {
 	pS := flags.IntP("min", "m", 1000, "minimum ID of containers to kill")
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		return killallMain(*pN, *pS)
+		return killallMain(cmd.OutOrStderr(), *pN, *pS)
 	}
 	return cmd
 }
