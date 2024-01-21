@@ -16,23 +16,40 @@ type idAndError struct {
 	err error
 }
 
-func killWorker(ch <-chan string, errCh chan<- idAndError, wg *sync.WaitGroup) {
+func killFuncPct(id string) error {
+	return pve.StopCmd(id).Run()
+}
+
+func killFuncCgroup(id string) error {
+	return cgroup.KillLXC(id)
+}
+
+var killModes = map[string]func(string) error{
+	"pct":    killFuncPct,
+	"cgroup": killFuncCgroup,
+}
+
+func killWorker(killFunc func(string) error, ch <-chan string, errCh chan<- idAndError, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for id := range ch {
-		cmd := pve.Stop(id)
-		if err := cmd.Run(); err != nil {
+		if err := killFunc(id); err != nil {
 			errCh <- idAndError{id, err}
 		}
 	}
 }
 
-func killallMain(out io.Writer, n int, minID int) (err error) {
+func killallMain(out io.Writer, killMode string, n int, minID int) (err error) {
+	killFunc, ok := killModes[killMode]
+	if !ok {
+		return fmt.Errorf("invalid kill mode: %s", killMode)
+	}
+
 	ch := make(chan string)
 	chErr := make(chan idAndError)
 	wg := &sync.WaitGroup{}
 	wg.Add(n)
 	for i := 0; i < n; i++ {
-		go killWorker(ch, chErr, wg)
+		go killWorker(killFunc, ch, chErr, wg)
 	}
 	hasError := false
 	go func() {
@@ -74,11 +91,12 @@ func MakeCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 	flags := cmd.Flags()
+	pM := flags.StringP("mode", "m", "pct", "kill mode (pct or cgroup)")
 	pN := flags.IntP("n", "n", 5, "max number of parallel killing containers")
-	pS := flags.IntP("min", "m", 1000, "minimum ID of containers to kill")
+	pS := flags.IntP("start", "s", 1000, "starting (minimum) ID of containers to kill")
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		return killallMain(cmd.OutOrStderr(), *pN, *pS)
+		return killallMain(cmd.OutOrStderr(), *pM, *pN, *pS)
 	}
 	return cmd
 }

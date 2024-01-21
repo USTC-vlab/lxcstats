@@ -8,14 +8,16 @@ import (
 
 const BaseDir = "/sys/fs/cgroup"
 
-func Open(pathComp ...string) (*os.File, error) {
-	pathComp = append([]string{BaseDir}, pathComp...)
-	return os.Open(filepath.Join(pathComp...))
+func Open(filename string) (*os.File, error) {
+	return os.Open(filepath.Join(BaseDir, filename))
 }
 
-func OpenLXC(id string, pathComp ...string) (*os.File, error) {
-	pathComp = append([]string{BaseDir, "lxc", id}, pathComp...)
-	return os.Open(filepath.Join(pathComp...))
+func OpenLXC(id string, filename string) (*os.File, error) {
+	return os.Open(GetFilenameLXC(id, filename))
+}
+
+func GetFilenameLXC(id string, filename string) string {
+	return filepath.Join(BaseDir, "lxc", id, filename)
 }
 
 func ListLXC() ([]string, error) {
@@ -30,6 +32,10 @@ func ListLXC() ([]string, error) {
 		}
 	}
 	return ids, nil
+}
+
+func KillLXC(id string) error {
+	return os.WriteFile(GetFilenameLXC(id, "cgroup.kill"), []byte("1"), 0)
 }
 
 func GetLXCInitPid(id string) (int, error) {
