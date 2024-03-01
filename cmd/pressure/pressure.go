@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"strings"
 
@@ -16,6 +17,13 @@ const (
 	IO     = "io.pressure"
 	CPU    = "cpu.pressure"
 	MEMORY = "memory.pressure"
+)
+
+type VmType string
+
+const (
+	LXC  VmType = "LXC"
+	QEMU VmType = "Qemu"
 )
 
 const pressureLineFormat = "avg10=%f avg60=%f avg300=%f total=%d"
@@ -32,8 +40,14 @@ type PSIStats struct {
 	Full *PSILine
 }
 
-func GetPressure(id string, filename string) (*PSIStats, error) {
-	f, err := cgroup.OpenLXC(id, filename)
+func GetPressure(id idType, filename string) (*PSIStats, error) {
+	var f *os.File
+	var err error
+	if id.vmType == LXC {
+		f, err = cgroup.OpenLXC(id.id, filename)
+	} else {
+		f, err = cgroup.OpenQemu(id.id, filename)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("open %s for %s: %w", filename, id, err)
 	}
@@ -63,26 +77,45 @@ func GetPressure(id string, filename string) (*PSIStats, error) {
 	return stats, nil
 }
 
+type idType struct {
+	id     string
+	vmType VmType
+}
+
+func (id idType) String() string {
+	return fmt.Sprintf("%s (%s)", id.id, id.vmType)
+}
+
 type idAndPressure struct {
-	id       string
+	id       idType
 	pressure *PSIStats
 }
 
 func listPressures(filename string, topN int) error {
-	ids, err := cgroup.ListLXC()
+	lxcIds, err := cgroup.ListLXC()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	pressures := make([]idAndPressure, 0, len(ids))
-	for _, id := range ids {
-		pressure, err := GetPressure(id, filename)
-		if err != nil {
-			log.Printf("GetPressure error for %s: %v", id, err)
-			continue
-		}
-		pressures = append(pressures, idAndPressure{id, pressure})
+	qemuIds, err := cgroup.ListQemu()
+	if err != nil {
+		log.Printf("ListQemu error (may not have qemu?): %v", err)
+		qemuIds = []string{}
 	}
+
+	pressures := make([]idAndPressure, 0, len(lxcIds)+len(qemuIds))
+	appendToPressure := func(ids []string, vmType VmType) {
+		for _, id := range ids {
+			idtype := idType{id, vmType}
+			pressure, err := GetPressure(idtype, filename)
+			if err != nil {
+				log.Printf("GetPressure error for %s: %v", id, err)
+				continue
+			}
+			pressures = append(pressures, idAndPressure{idtype, pressure})
+		}
+	}
+	appendToPressure(lxcIds, LXC)
+	appendToPressure(qemuIds, QEMU)
 	sort.Slice(pressures, func(i, j int) bool {
 		return pressures[i].pressure.Some.Avg10 > pressures[j].pressure.Some.Avg10
 	})
@@ -95,7 +128,7 @@ func listPressures(filename string, topN int) error {
 		line := fmt.Sprintf("%s | %.1f | %.1f | %.1f", p.id, p.pressure.Some.Avg10, p.pressure.Some.Avg60, p.pressure.Some.Avg300)
 		lines = append(lines, line)
 	}
-	fmt.Printf("Top %d containers with %s\n", topN, filename)
+	fmt.Printf("Top %d containers/VMs with %s\n", topN, filename)
 	fmt.Println(columnize.SimpleFormat(lines))
 	return nil
 }
@@ -103,16 +136,16 @@ func listPressures(filename string, topN int) error {
 func MakeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "pressure [-c | --cpu] [-m | --memory] [-i | --io]",
-		Short:   "List LXC with highest pressures",
+		Short:   "List LXC and Qemu with highest pressures",
 		Aliases: []string{"p"},
 		Args:    cobra.NoArgs,
 	}
 	flags := cmd.Flags()
 	flags.SortFlags = false
-	pCPU := flags.BoolP("cpu", "c", false, "list LXC with highest CPU pressures")
-	pMemory := flags.BoolP("memory", "m", false, "list LXC with highest memory pressures")
-	pIO := flags.BoolP("io", "i", false, "list LXC with highest I/O pressures")
-	pN := flags.IntP("count", "n", 5, "number of containers to show")
+	pCPU := flags.BoolP("cpu", "c", false, "list LXC and Qemu with highest CPU pressures")
+	pMemory := flags.BoolP("memory", "m", false, "list LXC and Qemu with highest memory pressures")
+	pIO := flags.BoolP("io", "i", false, "list LXC and Qemu with highest I/O pressures")
+	pN := flags.IntP("count", "n", 5, "number of containers & VMs to show")
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		enabled := []bool{*pCPU, *pMemory, *pIO}

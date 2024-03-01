@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const BaseDir = "/sys/fs/cgroup"
@@ -16,8 +17,16 @@ func OpenLXC(id string, filename string) (*os.File, error) {
 	return os.Open(GetFilenameLXC(id, filename))
 }
 
+func OpenQemu(id string, filename string) (*os.File, error) {
+	return os.Open(GetFilenameQemu(id, filename))
+}
+
 func GetFilenameLXC(id string, filename string) string {
 	return filepath.Join(BaseDir, "lxc", id, filename)
+}
+
+func GetFilenameQemu(id string, filename string) string {
+	return filepath.Join(BaseDir, "qemu.slice", id+".scope", filename)
 }
 
 func ListLXC() ([]string, error) {
@@ -29,6 +38,21 @@ func ListLXC() ([]string, error) {
 	for _, entry := range entries {
 		if entry.IsDir() {
 			ids = append(ids, entry.Name())
+		}
+	}
+	return ids, nil
+}
+
+func ListQemu() ([]string, error) {
+	entries, err := os.ReadDir(filepath.Join(BaseDir, "qemu.slice"))
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			id := strings.TrimSuffix(entry.Name(), ".scope")
+			ids = append(ids, id)
 		}
 	}
 	return ids, nil
