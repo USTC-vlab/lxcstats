@@ -19,11 +19,9 @@ const (
 	MEMORY = "memory.pressure"
 )
 
-type VmType string
-
 const (
-	LXC  VmType = "LXC"
-	QEMU VmType = "Qemu"
+	LXC  = "LXC"
+	QEMU = "Qemu"
 )
 
 const pressureLineFormat = "avg10=%f avg60=%f avg300=%f total=%d"
@@ -40,16 +38,16 @@ type PSIStats struct {
 	Full *PSILine
 }
 
-func GetPressure(id idType, filename string) (*PSIStats, error) {
+func GetPressure(id, typ string, filename string) (*PSIStats, error) {
 	var f *os.File
 	var err error
-	if id.vmType == LXC {
-		f, err = cgroup.OpenLXC(id.id, filename)
+	if typ == LXC {
+		f, err = cgroup.OpenLXC(id, filename)
 	} else {
-		f, err = cgroup.OpenQemu(id.id, filename)
+		f, err = cgroup.OpenQemu(id, filename)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("open %s for %s: %w", filename, id, err)
+		return nil, fmt.Errorf("open %s for %s (%s): %w", filename, id, typ, err)
 	}
 	defer f.Close()
 	stats := &PSIStats{
@@ -77,41 +75,33 @@ func GetPressure(id idType, filename string) (*PSIStats, error) {
 	return stats, nil
 }
 
-type idType struct {
-	id     string
-	vmType VmType
-}
-
-func (id idType) String() string {
-	return fmt.Sprintf("%s (%s)", id.id, id.vmType)
-}
-
 type idAndPressure struct {
-	id       idType
+	id       string
+	typ      string
 	pressure *PSIStats
 }
 
 func listPressures(filename string, topN int) error {
 	lxcIds, err := cgroup.ListLXC()
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("ListLXC error (may not have LXC?): %v", err)
+		lxcIds = []string{}
 	}
 	qemuIds, err := cgroup.ListQemu()
 	if err != nil {
-		log.Printf("ListQemu error (may not have qemu?): %v", err)
+		log.Printf("ListQemu error (may not have Qemu?): %v", err)
 		qemuIds = []string{}
 	}
 
 	pressures := make([]idAndPressure, 0, len(lxcIds)+len(qemuIds))
-	appendToPressure := func(ids []string, vmType VmType) {
+	appendToPressure := func(ids []string, typ string) {
 		for _, id := range ids {
-			idtype := idType{id, vmType}
-			pressure, err := GetPressure(idtype, filename)
+			pressure, err := GetPressure(id, typ, filename)
 			if err != nil {
 				log.Printf("GetPressure error for %s: %v", id, err)
 				continue
 			}
-			pressures = append(pressures, idAndPressure{idtype, pressure})
+			pressures = append(pressures, idAndPressure{id, typ, pressure})
 		}
 	}
 	appendToPressure(lxcIds, LXC)
@@ -120,12 +110,12 @@ func listPressures(filename string, topN int) error {
 		return pressures[i].pressure.Some.Avg10 > pressures[j].pressure.Some.Avg10
 	})
 
-	lines := []string{"ID | Avg10 | Avg60 | Avg300"}
+	lines := []string{"ID | Type | Avg10 | Avg60 | Avg300"}
 	for i, p := range pressures {
 		if i >= topN {
 			break
 		}
-		line := fmt.Sprintf("%s | %.1f | %.1f | %.1f", p.id, p.pressure.Some.Avg10, p.pressure.Some.Avg60, p.pressure.Some.Avg300)
+		line := fmt.Sprintf("%s | %s | %.1f | %.1f | %.1f", p.id, p.typ, p.pressure.Some.Avg10, p.pressure.Some.Avg60, p.pressure.Some.Avg300)
 		lines = append(lines, line)
 	}
 	fmt.Printf("Top %d containers/VMs with %s\n", topN, filename)
