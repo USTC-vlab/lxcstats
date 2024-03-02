@@ -9,8 +9,29 @@ import (
 
 const BaseDir = "/sys/fs/cgroup"
 
-func Open(filename string) (*os.File, error) {
-	return os.Open(filepath.Join(BaseDir, filename))
+type VMID struct {
+	Id   string
+	Type string
+}
+
+func (v VMID) String() string {
+	return fmt.Sprintf("%s (%s)", v.Id, v.Type)
+}
+
+const (
+	LXC  = "LXC"
+	QEMU = "Qemu"
+)
+
+func OpenVM(vmid VMID, filename string) (*os.File, error) {
+	switch vmid.Type {
+	case LXC:
+		return OpenLXC(vmid.Id, filename)
+	case QEMU:
+		return OpenQemu(vmid.Id, filename)
+	default:
+		return nil, fmt.Errorf("unknown vm type %s", vmid.Type)
+	}
 }
 
 func OpenLXC(id string, filename string) (*os.File, error) {
@@ -21,6 +42,17 @@ func OpenQemu(id string, filename string) (*os.File, error) {
 	return os.Open(GetFilenameQemu(id, filename))
 }
 
+func GetFilenameVM(vmid VMID, filename string) string {
+	switch vmid.Type {
+	case LXC:
+		return GetFilenameLXC(vmid.Id, filename)
+	case QEMU:
+		return GetFilenameQemu(vmid.Id, filename)
+	default:
+		panic("unknown vm type " + vmid.Type)
+	}
+}
+
 func GetFilenameLXC(id string, filename string) string {
 	return filepath.Join(BaseDir, "lxc", id, filename)
 }
@@ -29,9 +61,41 @@ func GetFilenameQemu(id string, filename string) string {
 	return filepath.Join(BaseDir, "qemu.slice", id+".scope", filename)
 }
 
+func EnableIOForQemu() error {
+	subtreeControlFilename := filepath.Join(BaseDir, "qemu.slice", "cgroup.subtree_control")
+	subtreeControl, err := os.OpenFile(subtreeControlFilename, os.O_WRONLY, 0)
+	if err != nil {
+		return err
+	}
+	defer subtreeControl.Close()
+	_, err = subtreeControl.WriteString("+io")
+	return err
+}
+
+func ListVM() ([]VMID, error) {
+	lxc, err := ListLXC()
+	if err != nil {
+		return nil, err
+	}
+	qemu, err := ListQemu()
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]VMID, 0, len(lxc)+len(qemu))
+	for _, id := range lxc {
+		ids = append(ids, VMID{id, LXC})
+	}
+	for _, id := range qemu {
+		ids = append(ids, VMID{id, QEMU})
+	}
+	return ids, nil
+}
+
 func ListLXC() ([]string, error) {
 	entries, err := os.ReadDir(filepath.Join(BaseDir, "lxc"))
-	if err != nil {
+	if os.IsNotExist(err) {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 	ids := make([]string, 0, len(entries))
@@ -45,7 +109,9 @@ func ListLXC() ([]string, error) {
 
 func ListQemu() ([]string, error) {
 	entries, err := os.ReadDir(filepath.Join(BaseDir, "qemu.slice"))
-	if err != nil {
+	if os.IsNotExist(err) {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 	ids := make([]string, 0, len(entries))

@@ -40,10 +40,10 @@ func (l IOSingle) Diff(r IOSingle) IOSingle {
 
 type IOStat map[string]IOSingle
 
-func GetIOStat(id string) (IOStat, error) {
-	f, err := cgroup.OpenLXC(id, "io.stat")
+func GetIOStat(vmid cgroup.VMID) (IOStat, error) {
+	f, err := cgroup.OpenVM(vmid, "io.stat")
 	if err != nil {
-		return nil, fmt.Errorf("open io.stat for %s: %w", id, err)
+		return nil, fmt.Errorf("open io.stat for %s: %w", vmid, err)
 	}
 	defer f.Close()
 	stats := make(IOStat)
@@ -94,27 +94,36 @@ func iostatMain(diskPath string) error {
 	major, minor := util.GetDeviceNumbers(stat.Rdev)
 	matchString := fmt.Sprintf("%d:%d", major, minor)
 
-	cachedStats := make(map[string]IOSingle)
+	// Enable IO subtree for qemu, if exists
+	if err := cgroup.EnableIOForQemu(); err != nil {
+		if os.IsNotExist(err) {
+			log.Println("qemu.slice not found (not running any KVM), skipping")
+		} else {
+			log.Printf("EnableIOForQemu error: %v", err)
+		}
+	}
+
+	cachedStats := make(map[cgroup.VMID]IOSingle)
 	for t := range time.NewTicker(1 * time.Second).C {
-		ids, err := cgroup.ListLXC()
+		vmids, err := cgroup.ListVM()
 		if err != nil {
 			log.Fatal(err)
 		}
-		lines := []string{"ID | Rios | Wios | Rbytes | Wbytes"}
-		newStats := make(map[string]IOSingle)
-		for _, id := range ids {
-			stats, err := GetIOStat(id)
+		lines := []string{"ID | Type | Rios | Wios | Rbytes | Wbytes"}
+		newStats := make(map[cgroup.VMID]IOSingle)
+		for _, vmid := range vmids {
+			stats, err := GetIOStat(vmid)
 			if err != nil {
-				log.Printf("GetIOStat error for %s: %v", id, err)
+				log.Printf("GetIOStat error for %s: %v", vmid, err)
 				continue
 			}
 			stat := stats[matchString]
-			newStats[id] = stat
-			oldStat, ok := cachedStats[id]
+			newStats[vmid] = stat
+			oldStat, ok := cachedStats[vmid]
 			if ok {
 				diff := stat.Diff(oldStat)
 				if !diff.Zero() {
-					line := fmt.Sprintf("%s | %d | %d | %s | %s", id,
+					line := fmt.Sprintf("%s | %s | %d | %d | %s | %s", vmid.Id, vmid.Type,
 						diff.Rios, diff.Wios, util.FormatSize(diff.Rbytes), util.FormatSize(diff.Wbytes))
 					lines = append(lines, line)
 				}
