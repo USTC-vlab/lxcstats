@@ -140,7 +140,8 @@ func iostatMain(diskPath string) error {
 func MakeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "iostat DISK",
-		Short: "Show I/O statistics for DISK",
+		Short: "Show I/O statistics for disks",
+		Long:  "Show I/O statistics for DISK",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return iostatMain(args[0])

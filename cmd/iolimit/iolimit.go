@@ -66,7 +66,7 @@ func showIOLimit(w io.Writer, ctid string) error {
 	return nil
 }
 
-func setIOLimit(ctid string, iops cgroup.IOPS) error {
+func setIOLimit(ctid string, diskName string, iops cgroup.IOPS) error {
 
 	pveStorage, err := pve.GetStorage()
 	if err != nil {
@@ -77,14 +77,14 @@ func setIOLimit(ctid string, iops cgroup.IOPS) error {
 	if err != nil {
 		return err
 	}
-	rootfs := config["rootfs"]
-	rootfsIdent := strings.SplitN(rootfs, ",", 2)[0]
-	rootfsParts := strings.Split(rootfsIdent, ":")
-	if len(rootfsParts) != 2 {
-		return fmt.Errorf("invalid rootfs %s", rootfsIdent)
+	disk := config[diskName]
+	diskIdent := strings.SplitN(disk, ",", 2)[0]
+	diskParts := strings.Split(diskIdent, ":")
+	if len(diskParts) != 2 {
+		return fmt.Errorf("invalid disk %s", diskIdent)
 	}
 
-	major, minor, err := pve.GetBlockDevForStorage(rootfsParts[0], rootfsParts[1], pveStorage)
+	major, minor, err := pve.GetBlockDevForStorage(diskParts[0], diskParts[1], pveStorage)
 	if err != nil {
 		return err
 	}
@@ -100,5 +100,5 @@ func iolimitMain(cmd *cobra.Command, ctid string, iops cgroup.IOPS) error {
 	if iops.IsZero() {
 		return showIOLimit(cmd.OutOrStdout(), ctid)
 	}
-	return setIOLimit(ctid, iops)
+	return setIOLimit(ctid, "rootfs", iops)
 }
