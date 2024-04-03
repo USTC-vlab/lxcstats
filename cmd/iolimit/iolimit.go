@@ -34,5 +34,11 @@ func MakeCmd() *cobra.Command {
 }
 
 func iolimitMain(ctid string, iops cgroup.IOPS) error {
-	return cgroup.SetIOPSForLXC(ctid, cgroup.IOPSLine{IOPS: iops})
+	// TODO: Find major:minor
+	iopsline := cgroup.IOPSLine{
+		Major: 0,
+		Minor: 0,
+		IOPS:  iops,
+	}
+	return cgroup.SetIOPSForLXC(ctid, iopsline)
 }
