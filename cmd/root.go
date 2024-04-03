@@ -22,8 +22,8 @@ var versionCmd = &cobra.Command{
 func MakeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "vct",
-		Short: "Vlab's Container Tool",
-		Long:  "Vlab's Container Tool, a versatile tool for managing containers on Proxmox VE",
+		Short: "Vlab's Control Tool",
+		Long:  "Vlab's Control Tool, a versatile tool for managing containers and virtual machines on Proxmox VE",
 		Args:  cobra.NoArgs,
 	}
 	cmd.CompletionOptions.HiddenDefaultCmd = true
