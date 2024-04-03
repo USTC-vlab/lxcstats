@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/USTC-vlab/vct/cmd/df"
 	"github.com/USTC-vlab/vct/cmd/findpid"
+	"github.com/USTC-vlab/vct/cmd/iolimit"
 	"github.com/USTC-vlab/vct/cmd/iostat"
 	"github.com/USTC-vlab/vct/cmd/killall"
 	"github.com/USTC-vlab/vct/cmd/pressure"
@@ -30,6 +31,7 @@ func MakeCmd() *cobra.Command {
 		df.MakeCmd(),
 		findpid.MakeCmd(),
 		iostat.MakeCmd(),
+		iolimit.MakeCmd(),
 		killall.MakeCmd(),
 		pressure.MakeCmd(),
 		versionCmd,

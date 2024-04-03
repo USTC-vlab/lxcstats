@@ -63,13 +63,7 @@ func GetFilenameQemu(id string, filename string) string {
 
 func EnableIOForQemu() error {
 	subtreeControlFilename := filepath.Join(BaseDir, "qemu.slice", "cgroup.subtree_control")
-	subtreeControl, err := os.OpenFile(subtreeControlFilename, os.O_WRONLY, 0)
-	if err != nil {
-		return err
-	}
-	defer subtreeControl.Close()
-	_, err = subtreeControl.WriteString("+io")
-	return err
+	return os.WriteFile(subtreeControlFilename, []byte("+io"), 0)
 }
 
 func ListVM() ([]VMID, error) {
