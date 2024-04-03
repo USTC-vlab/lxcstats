@@ -2,8 +2,11 @@ package iolimit
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/USTC-vlab/vct/pkg/cgroup"
+	"github.com/USTC-vlab/vct/pkg/pve"
 	"github.com/spf13/cobra"
 )
 
@@ -16,8 +19,8 @@ func MakeCmd() *cobra.Command {
 	}
 	flags := cmd.Flags()
 	var iops cgroup.IOPS
-	flags.Int64VarP(&iops.Rbps, "rbps", "", 0, "set read bandwidth limit")
-	flags.Int64VarP(&iops.Wbps, "wbps", "", 0, "set write bandwidth limit")
+	flags.Int64VarP(&iops.Rbps, "rbps", "R", 0, "set read bandwidth limit")
+	flags.Int64VarP(&iops.Wbps, "wbps", "W", 0, "set write bandwidth limit")
 	flags.Int64VarP(&iops.Riops, "riops", "r", 0, "set read IOPS limit")
 	flags.Int64VarP(&iops.Wiops, "wiops", "w", 0, "set write IOPS limit")
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
@@ -34,10 +37,29 @@ func MakeCmd() *cobra.Command {
 }
 
 func iolimitMain(ctid string, iops cgroup.IOPS) error {
-	// TODO: Find major:minor
+	pveStorage, err := pve.GetStorage()
+	if err != nil {
+		return err
+	}
+
+	config, err := pve.GetLXCConfig(ctid)
+	if err != nil {
+		return err
+	}
+	rootfs := config["rootfs"]
+	rootfsIdent := strings.SplitN(rootfs, ",", 2)[0]
+	rootfsParts := strings.Split(rootfsIdent, ":")
+	if len(rootfsParts) != 2 {
+		return fmt.Errorf("invalid rootfs %s", rootfsIdent)
+	}
+
+	major, minor, err := pve.GetBlockDevForStorage(rootfsParts[0], rootfsParts[1], pveStorage)
+	if err != nil {
+		return err
+	}
 	iopsline := cgroup.IOPSLine{
-		Major: 0,
-		Minor: 0,
+		Major: major,
+		Minor: minor,
 		IOPS:  iops,
 	}
 	return cgroup.SetIOPSForLXC(ctid, iopsline)

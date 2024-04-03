@@ -103,7 +103,7 @@ func getBlockDevForLVM(vgname, lvname string) (uint64, uint64, error) {
 // The "aux" parameter is used to help determine the type of the storage.
 func GetBlockDevForStorage(storage, name string, aux []PVEStorage) (uint64, uint64, error) {
 	i := slices.IndexFunc(aux, func(s PVEStorage) bool {
-		return s.Name == name
+		return s.Name == storage
 	})
 	if i == -1 {
 		return 0, 0, fs.ErrNotExist

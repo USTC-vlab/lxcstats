@@ -36,7 +36,7 @@ func parseConfig(r io.Reader) map[string]string {
 			// Invalid line?
 			continue
 		}
-		config[fields[0]] = fields[1]
+		config[strings.TrimSuffix(fields[0], ":")] = fields[1]
 	}
 	return config
 }
@@ -45,7 +45,7 @@ func GetConfig(typ, vmid string) (map[string]string, error) {
 	if typ == "qemu" {
 		typ = "qemu-server"
 	}
-	f, err := os.Open(fmt.Sprintf("%s/%s/%s.cfg", EtcPve, typ, vmid))
+	f, err := os.Open(fmt.Sprintf("%s/%s/%s.conf", EtcPve, typ, vmid))
 	if err != nil {
 		return nil, err
 	}
