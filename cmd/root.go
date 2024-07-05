@@ -6,6 +6,7 @@ import (
 	"github.com/USTC-vlab/vct/cmd/iolimit"
 	"github.com/USTC-vlab/vct/cmd/iostat"
 	"github.com/USTC-vlab/vct/cmd/killall"
+	"github.com/USTC-vlab/vct/cmd/nsenter"
 	"github.com/USTC-vlab/vct/cmd/pressure"
 	"github.com/spf13/cobra"
 )
@@ -33,6 +34,7 @@ func MakeCmd() *cobra.Command {
 		iostat.MakeCmd(),
 		iolimit.MakeCmd(),
 		killall.MakeCmd(),
+		nsenter.MakeCmd(),
 		pressure.MakeCmd(),
 		versionCmd,
 	)
