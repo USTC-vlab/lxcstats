@@ -8,6 +8,7 @@ import (
 	"github.com/USTC-vlab/vct/cmd/killall"
 	"github.com/USTC-vlab/vct/cmd/nsenter"
 	"github.com/USTC-vlab/vct/cmd/pressure"
+	"github.com/USTC-vlab/vct/cmd/top"
 	"github.com/spf13/cobra"
 )
 
@@ -36,6 +37,7 @@ func MakeCmd() *cobra.Command {
 		killall.MakeCmd(),
 		nsenter.MakeCmd(),
 		pressure.MakeCmd(),
+		top.MakeCmd(),
 		versionCmd,
 	)
 	pVersion := cmd.Flags().BoolP("version", "v", false, "show version")

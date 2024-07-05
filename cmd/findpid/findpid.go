@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func findLXCForPid(pid string) (string, error) {
+func FindLXCForPid(pid string) (string, error) {
 	filename := fmt.Sprintf("/proc/%s/cgroup", pid)
 	f, err := os.Open(filename)
 	if err != nil {
@@ -36,7 +36,7 @@ func findLXCForPid(pid string) (string, error) {
 func runE(cmd *cobra.Command, args []string) error {
 	w := cmd.OutOrStdout()
 	for _, pid := range args {
-		id, err := findLXCForPid(pid)
+		id, err := FindLXCForPid(pid)
 		if err != nil {
 			return err
 		}
