@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/USTC-vlab/vct/pkg/cgroup"
@@ -84,8 +84,13 @@ func listPressures(filename string, topN int) error {
 		pressures = append(pressures, vmidAndPressure{vmid, pressure})
 	}
 
-	sort.Slice(pressures, func(i, j int) bool {
-		return pressures[i].pressure.Some.Avg10 > pressures[j].pressure.Some.Avg10
+	slices.SortFunc(pressures, func(a, b vmidAndPressure) int {
+		if a.pressure.Some.Avg10 > b.pressure.Some.Avg10 {
+			return -1
+		} else if a.pressure.Some.Avg10 < b.pressure.Some.Avg10 {
+			return 1
+		}
+		return 0
 	})
 
 	lines := []string{"ID | Type | Avg10 | Avg60 | Avg300"}

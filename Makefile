@@ -6,7 +6,7 @@ VERSION := $(shell git describe --tags --always --dirty)
 all: $(BIN)
 
 $(BIN):
-	go build -ldflags='-s -w -X main.version=$(VERSION)'
+	go build -ldflags='-s -w -X main.version=$(VERSION)' -trimpath
 
 test:
 	go test -v ./...
